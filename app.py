@@ -1,4 +1,4 @@
-from flask_login import LoginManager, UserMixin, current_user, login_user, logout_user
+from flask_login import LoginManager, UserMixin, current_user, login_user, logout_user, login_required
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField
 from wtforms.validators import DataRequired, EqualTo, ValidationError
@@ -109,6 +109,12 @@ def prisijungti():
 def atsijungti():
     logout_user()
     return redirect(url_for('index'))
+
+@app.route("/uzduotys")
+@login_required
+def uzduotys():
+    uzduotys = Uzduotis.query.filter_by(vartotojas=current_user).all()
+    return render_template("uzduotys.html", uzduotys=uzduotys)
 
 
 # paleidimas
