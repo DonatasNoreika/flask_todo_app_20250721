@@ -1,6 +1,6 @@
 from flask_login import LoginManager, UserMixin, current_user, login_user, logout_user, login_required
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, SubmitField
+from wtforms import StringField, PasswordField, SubmitField, BooleanField
 from wtforms.validators import DataRequired, EqualTo, ValidationError
 from flask import Flask, render_template, flash, redirect, url_for, request
 from flask_sqlalchemy import SQLAlchemy
@@ -48,6 +48,12 @@ class PrisijungimoForma(FlaskForm):
     vardas = StringField('Vardas', [DataRequired()])
     slaptazodis = PasswordField('Slaptažodis', [DataRequired()])
     submit = SubmitField('Prisijungti')
+
+
+class UzduotisForma(FlaskForm):
+    pavadinimas = StringField('Pavadinimas', [DataRequired()])
+    atlikta = BooleanField('Atlikta')
+    submit = SubmitField('Įvesti')
 
 
 # modeliai
@@ -115,6 +121,19 @@ def atsijungti():
 def uzduotys():
     uzduotys = Uzduotis.query.filter_by(vartotojas=current_user).all()
     return render_template("uzduotys.html", uzduotys=uzduotys)
+
+@app.route("/uzduotys/nauja", methods=['GET', 'POST'])
+@login_required
+def sukurti_uzduoti():
+    form = UzduotisForma()
+    if form.validate_on_submit():
+        uzduotis = Uzduotis(pavadinimas=form.pavadinimas.data, atlikta=form.atlikta.data, vartotojas_id=current_user.id)
+        db.session.add(uzduotis)
+        db.session.commit()
+        flash('Užduotis sukurta!', 'success')
+        return redirect(url_for("uzduotys"))
+    return render_template("sukurti_uzduoti.html", form=form)
+
 
 
 # paleidimas

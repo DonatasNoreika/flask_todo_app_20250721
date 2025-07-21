@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+  <h2>Įvesti užduotį</h2>
+  <form method="POST">
+    {{ form.hidden_tag() }}
+    <div>
+      {{ form.pavadinimas.label }}<br>
+      {{ form.pavadinimas(size=32) }}<br>
+      {% for error in form.pavadinimas.errors %}
+        <span style="color: red;">{{ error }}</span>
+      {% endfor %}
+    </div>
+    <div>
+      {{ form.atlikta() }} {{ form.atlikta.label }}
+    </div>
+    <div>
+      {{ form.submit() }}
+    </div>
+  </form>
+{% endblock %}
