@@ -1,8 +1,8 @@
-from flask_login import LoginManager, UserMixin, current_user
+from flask_login import LoginManager, UserMixin, current_user, login_user, logout_user
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField
 from wtforms.validators import DataRequired, EqualTo, ValidationError
-from flask import Flask, render_template, flash, redirect, url_for
+from flask import Flask, render_template, flash, redirect, url_for, request
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 import os
@@ -45,7 +45,7 @@ class RegistracijosForma(FlaskForm):
 
 
 class PrisijungimoForma(FlaskForm):
-    el_pastas = StringField('El. paštas', [DataRequired()])
+    vardas = StringField('Vardas', [DataRequired()])
     slaptazodis = PasswordField('Slaptažodis', [DataRequired()])
     submit = SubmitField('Prisijungti')
 
@@ -77,7 +77,7 @@ def index():
 def registruotis():
     form = RegistracijosForma()
     if current_user.is_authenticated:
-        flash('Jau esate prisijungę', 'success')
+        flash('Jau esate prisijungę', 'danger')
         return redirect(url_for("index"))
     if form.validate_on_submit():
         koduotas_slaptazodis = bcrypt.generate_password_hash(form.slaptazodis.data).decode("utf-8")
@@ -87,6 +87,29 @@ def registruotis():
         flash('Sėkmingai prisiregistravote! Galite prisijungti', 'success')
         return redirect(url_for("index"))
     return render_template('registruotis.html', form=form)
+
+@app.route("/prisijungti", methods=['GET', 'POST'])
+def prisijungti():
+    form = PrisijungimoForma()
+    if current_user.is_authenticated:
+        flash('Jau esate prisijungę', 'danger')
+        return redirect(url_for("index"))
+    if form.validate_on_submit():
+        user = Vartotojas.query.filter_by(vardas=form.vardas.data).first()
+        if user and bcrypt.check_password_hash(user.slaptazodis, form.slaptazodis.data):
+            login_user(user)
+            next_page = request.args.get('next')
+            return redirect(next_page) if next_page else redirect(url_for('index'))
+        else:
+            flash('Prisijungti nepavyko. Patikrinkite vardą ir slaptažodį', 'danger')
+    return render_template("prisijungti.html", form=form)
+
+
+@app.route("/atsijungti")
+def atsijungti():
+    logout_user()
+    return redirect(url_for('index'))
+
 
 # paleidimas
 if __name__ == '__main__':
