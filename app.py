@@ -1,6 +1,10 @@
-from flask_login import LoginManager, UserMixin
-from flask import Flask, render_template
+from flask_login import LoginManager, UserMixin, current_user
+from flask_wtf import FlaskForm
+from wtforms import StringField, PasswordField, SubmitField
+from wtforms.validators import DataRequired, EqualTo, ValidationError
+from flask import Flask, render_template, flash, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
+from flask_bcrypt import Bcrypt
 import os
 
 # inicializavimas
@@ -10,10 +14,41 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'da
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = 'your_secret_key_here'
 db = SQLAlchemy(app)
+bcrypt = Bcrypt(app)
 
-# login_manager = LoginManager(app)
-# login_manager.login_view = "registruotis"
-# login_manager.login_message_category = 'info'
+login_manager = LoginManager(app)
+login_manager.login_view = "registruotis"
+login_manager.login_message_category = 'info'
+
+@login_manager.user_loader
+def load_user(user_id):
+    return Vartotojas.query.get(int(user_id))
+
+# forms
+class RegistracijosForma(FlaskForm):
+    vardas = StringField('Vardas', [DataRequired()])
+    el_pastas = StringField('El. paštas', [DataRequired()])
+    slaptazodis = PasswordField('Slaptažodis', [DataRequired()])
+    patvirtintas_slaptazodis = PasswordField("Pakartokite slaptažodį",
+                                             [EqualTo('slaptazodis', "Slaptažodis turi sutapti.")])
+    submit = SubmitField('Prisiregistruoti')
+
+    def tikrinti_varda(self, vardas):
+        vartotojas = app.Vartotojas.query.filter_by(vardas=vardas.data).first()
+        if vartotojas:
+            raise ValidationError('Šis vardas panaudotas. Pasirinkite kitą.')
+
+    def tikrinti_pasta(self, el_pastas):
+        vartotojas = app.Vartotojas.query.filter_by(el_pastas=el_pastas.data).first()
+        if vartotojas:
+            raise ValidationError('Šis el. pašto adresas panaudotas. Pasirinkite kitą.')
+
+
+class PrisijungimoForma(FlaskForm):
+    el_pastas = StringField('El. paštas', [DataRequired()])
+    slaptazodis = PasswordField('Slaptažodis', [DataRequired()])
+    submit = SubmitField('Prisijungti')
+
 
 # modeliai
 class Vartotojas(db.Model, UserMixin):
@@ -32,11 +67,26 @@ class Uzduotis(db.Model):
     vartotojas_id = db.Column(db.Integer, db.ForeignKey("vartotojas.id"))
     vartotojas = db.relationship("Vartotojas")
 
+
 # rodiniai
 @app.route("/")
 def index():
     return render_template("index.html")
 
+@app.route("/registruotis", methods=['GET', 'POST'])
+def registruotis():
+    form = RegistracijosForma()
+    if current_user.is_authenticated:
+        flash('Jau esate prisijungę', 'success')
+        return redirect(url_for("index"))
+    if form.validate_on_submit():
+        koduotas_slaptazodis = bcrypt.generate_password_hash(form.slaptazodis.data).decode("utf-8")
+        vartotojas = Vartotojas(vardas=form.vardas.data, el_pastas=form.el_pastas.data, slaptazodis=koduotas_slaptazodis)
+        db.session.add(vartotojas)
+        db.session.commit()
+        flash('Sėkmingai prisiregistravote! Galite prisijungti', 'success')
+        return redirect(url_for("index"))
+    return render_template('registruotis.html', form=form)
 
 # paleidimas
 if __name__ == '__main__':
