@@ -228,8 +228,9 @@ def reset_request():
     form = UzklausosAtnaujinimoForma()
     if form.validate_on_submit():
         user = Vartotojas.query.filter_by(el_pastas=form.el_pastas.data).first()
-        send_reset_email(user)
-        flash("Jums išsiųstas el. laiškas su staptažodžio atnaujinimo instrukcijomis", "info")
+        flash("Jums išsiųstas el. laiškas su staptažodžio atnaujinimo instrukcijomis. Jeigu negavote, patikrinkite, ar teisingai įvedėte el. pašto adresą.", "info")
+        if user:
+            send_reset_email(user)
         return redirect(url_for("prisijungti"))
     return render_template("reset_request.html", form=form)
 
