@@ -5,6 +5,8 @@ from wtforms.validators import DataRequired, EqualTo, ValidationError, Email
 from flask import Flask, render_template, flash, redirect, url_for, request
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
+from flask_mail import Message, Mail
+from itsdangerous import URLSafeTimedSerializer as Serializer
 import os
 
 # inicializavimas
@@ -19,6 +21,16 @@ bcrypt = Bcrypt(app)
 login_manager = LoginManager(app)
 login_manager.login_view = "prisijungti"
 login_manager.login_message_category = 'info'
+
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = 'MAIL_USERNAME'
+app.config['MAIL_PASSWORD'] = 'MAIL_PASSWORD'
+
+mail = Mail(app)
+
+
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -68,6 +80,9 @@ class Vartotojas(db.Model, UserMixin):
     el_pastas = db.Column("El. pašto adresas", db.String(120), unique=True, nullable=False)
     slaptazodis = db.Column("Slaptažodis", db.String(60), unique=True, nullable=False)
 
+    def get_reset_token(self):
+        s = Serializer(app.config['SECRET_KEY'])
+        return s.dumps({"user_id": self.id})
 
 class Uzduotis(db.Model):
     __tablename__ = "uzduotis"
@@ -162,6 +177,22 @@ def istrinti_uzduoti(id):
     return redirect(url_for('uzduotys'))
 
 
+def send_reset_email(user):
+    token = user.get_reset_token()
+    msg = Message("Slaptažodžio atnaujinimo užklausa",
+                  sender="el@pastas.lt",
+                  recipients=[user.el_pastas])
+    msg.body = f'''Norėdami atnaujinti slaptažodį, paspauskite nuorodą:
+    {url_for('reset_token', token=token, _external=True)}
+    Jei jūs nedarėte šios užklausos, nieko nedarykite ir slaptažodis nebus pakeistas.'''
+    print(msg.body)
+    # mail.send(msg)
+
+
+@app.route("/reset_password/<token>")
+def reset_token(token):
+    pass
+
 
 @app.route("/reset_password", methods=['GET', 'POST'])
 def reset_request():
@@ -170,7 +201,7 @@ def reset_request():
     form = UzklausosAtnaujinimoForma()
     if form.validate_on_submit():
         user = Vartotojas.query.filter_by(el_pastas=form.el_pastas.data).first()
-        # siunčia email
+        send_reset_email(user)
         flash("Jums išsiųstas el. laiškas su staptažodžio atnaujinimo instrukcijomis", "info")
         return redirect(url_for("prisijungti"))
     return render_template("reset_request.html", form=form)
