@@ -235,6 +235,19 @@ def reset_request():
     return render_template("reset_request.html", form=form)
 
 
+@app.errorhandler(404)
+def klaida_404(klaida):
+    return render_template("404.html"), 404
+
+
+@app.errorhandler(403)
+def klaida_403(klaida):
+    return render_template("403.html"), 403
+
+@app.errorhandler(500)
+def klaida_500(klaida):
+    return render_template("500.html"), 500
+
 # paleidimas
 if __name__ == '__main__':
     with app.app_context():
