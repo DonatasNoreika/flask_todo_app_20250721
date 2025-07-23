@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<form method="POST">
+    {{ form.hidden_tag() }}
+    <fieldset class="form-group">
+        <legend class="border-bottom mb-4">Slaptažodžio pakeitimas</legend>
+        <div class="form-group">
+            {{ form.slaptazodis.label(class="form-control-label") }}
+            {{ form.slaptazodis(class="form-control") }}
+        </div>
+                <div class="form-group">
+            {{ form.patvirtintas_slaptazodis.label(class="form-control-label") }}
+            {{ form.patvirtintas_slaptazodis(class="form-control") }}
+        </div>
+    </fieldset>
+    <div class="form-group mt-4">
+        {{ form.submit(class="btn btn-outline-info") }}
+    </div>
+</form>
+
+{% endblock %}
