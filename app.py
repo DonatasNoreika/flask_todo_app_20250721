@@ -1,7 +1,7 @@
 from flask_login import LoginManager, UserMixin, current_user, login_user, logout_user, login_required
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField, BooleanField
-from wtforms.validators import DataRequired, EqualTo, ValidationError
+from wtforms.validators import DataRequired, EqualTo, ValidationError, Email
 from flask import Flask, render_template, flash, redirect, url_for, request
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
@@ -17,7 +17,7 @@ db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
 
 login_manager = LoginManager(app)
-login_manager.login_view = "registruotis"
+login_manager.login_view = "prisijungti"
 login_manager.login_message_category = 'info'
 
 @login_manager.user_loader
@@ -53,6 +53,10 @@ class PrisijungimoForma(FlaskForm):
 class UzduotisForma(FlaskForm):
     pavadinimas = StringField('Pavadinimas', [DataRequired()])
     atlikta = BooleanField('Atlikta')
+    submit = SubmitField('Įvesti')
+
+class UzklausosAtnaujinimoForma(FlaskForm):
+    el_pastas = StringField('El. paštas', [DataRequired(), Email()])
     submit = SubmitField('Įvesti')
 
 
@@ -156,6 +160,21 @@ def istrinti_uzduoti(id):
     db.session.commit()
     flash('Užduotis ištrinta!', 'success')
     return redirect(url_for('uzduotys'))
+
+
+
+@app.route("/reset_password", methods=['GET', 'POST'])
+def reset_request():
+    if current_user.is_authenticated:
+        return redirect(url_for("index"))
+    form = UzklausosAtnaujinimoForma()
+    if form.validate_on_submit():
+        user = Vartotojas.query.filter_by(el_pastas=form.el_pastas.data).first()
+        # siunčia email
+        flash("Jums išsiųstas el. laiškas su staptažodžio atnaujinimo instrukcijomis", "info")
+        return redirect(url_for("prisijungti"))
+    return render_template("reset_request.html", form=form)
+
 
 # paleidimas
 if __name__ == '__main__':
